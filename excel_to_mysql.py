@@ -2,6 +2,8 @@ import pandas as pd
 from datetime import datetime
 import db_utils
 
+# TODO: попробовать версию с SQLite3
+
 
 def print_debug(text: str) -> None:
     """Печатает текущую дату, время + текст из параметра в консоль."""
@@ -11,7 +13,7 @@ def print_debug(text: str) -> None:
 #
 # Назначение: из исходного файла в формате XLSX создавать таблицу в БД MySQL и заполнять её данными.
 #
-
+# TODO: выделить всё это в функцию
 # 1. Читаем файл Excel
 source_file_name = "Дислокация вагонов по сети.xlsx"
 
@@ -37,7 +39,7 @@ query_create_table_head = f"""CREATE TABLE {table_name} (
 db_column_list = []  # Заголовки таблицы БД (с убранными спец символами)
 df_column_list = []  # Заголовки DataFrame (как есть в Excel)
 # Определяем типы для колонок таблицы в БД, для отсутсвующих здесь будет TINYTEXT:
-db_data_types = {  # TODO: добавить больше типов
+db_data_types = {  # TODO: добавить больше типов (FLOAT?)
     "Примечание_диспетчера": "TEXT",
     "Оставшийся_километраж": "INT"
 }
@@ -55,9 +57,9 @@ for column in source_df.columns:
 
     if column in db_data_types:  # Если для колонки определен тип данных вручную, берём его
         column_type = db_data_types[column]
-        query_create_table_head = query_create_table_head + f"\n    {column} {column_type} COMMENT '{comment}',"
+        query_create_table_head += f"\n    {column} {column_type} COMMENT '{comment}',"
     else:
-        query_create_table_head = query_create_table_head + f"\n    {column} TINYTEXT COMMENT '{comment}',"
+        query_create_table_head += f"\n    {column} TINYTEXT COMMENT '{comment}',"
 
 query_create_table_tail = f"""
     PRIMARY KEY(id)
@@ -84,23 +86,19 @@ query_insert_row_head = query_insert_row_head[:-1] + f"""  # [:-1] чтобы у
 VALUES (
 """
 
-i = 1
-# full_query = ""
+row = 1
 # https://www.geeksforgeeks.org/different-ways-to-iterate-over-rows-in-pandas-dataframe/
-for ind in source_df.index:
-    print_debug(f"Insert row {i} to DB...")
+for ind in source_df.index:  # TODO: copy to snippets lib
+    print_debug(f"Insert row {row} to DB...")
     head = query_insert_row_head
     for column in df_column_list:
-        head = head + f"\n    '{source_df[column][ind]}',"
+        head += f"\n    '{source_df[column][ind]}',"
 
     query_insert_row_tail = ");"
 
     query_insert_row = head[:-1] + query_insert_row_tail  # [:-1] чтобы убрать последнюю запятую
     db_utils.db_query(query_insert_row)
     # TODO: проверить результат выполнения запроса на наличие ошибок
-    # full_query = full_query + f"\n{query_insert_row}"
-    i = i+1
+    row += 1
 
-# print("Executing SQL query...")
-# db_utils.db_query(full_query)
 print_debug("Done.")
