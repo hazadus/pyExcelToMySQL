@@ -1,13 +1,20 @@
 import pandas as pd
-from datetime import datetime
 import db_utils
+import logging
+import sys
 
 # TODO: попробовать версию с SQLite3
+# TODO: add decorator - execution time measurement
 
-
-def print_debug(text: str) -> None:
-    """Печатает текущую дату, время + текст из параметра в консоль."""
-    print(datetime.now().strftime('%d %b %Y %H:%M:%S ') + text)
+logging.basicConfig(
+    level=logging.INFO,
+    handlers=[
+        logging.FileHandler("log.txt"),
+        logging.StreamHandler(sys.stdout)
+    ],
+    format="%(asctime)s - %(module)s - %(levelname)s - %(funcName)s: %(lineno)d - %(message)s",
+    datefmt='%d/%m/%Y %H:%M:%S',
+)
 
 
 def excel_file_to_mysql(source_file_name: str, table_name: str) -> None:
@@ -15,14 +22,15 @@ def excel_file_to_mysql(source_file_name: str, table_name: str) -> None:
     Существующая таблица будет удалена."""
 
     # 1. Читаем файл Excel
+    logging.info("Loading Excel file...")
     source_df = pd.read_excel(source_file_name)
 
-    print_debug(f"Excel file loaded. Columns: ")
+    logging.info(f"Excel file loaded. Columns: ")
 
     # 2. Получаем список заголовков столбцов
     for column in source_df.columns:
         column = column.replace('\n', ' ')  # В названиях колонок были замечены символы перевода строки, убрать их
-        print_debug(f"- {column}")
+        logging.info(f"- {column}")
 
     # 3. Проверяем наличие таблицы в БД - если есть, удаляем её
     query = f"DROP TABLE IF EXISTS {table_name}"
@@ -65,7 +73,7 @@ def excel_file_to_mysql(source_file_name: str, table_name: str) -> None:
 
     query_create_table = query_create_table_head + query_create_table_tail
 
-    print_debug(query_create_table)
+    logging.info(query_create_table)
 
     # 5. Создаем таблицу в БД
     db_utils.db_query(query_create_table)
@@ -86,7 +94,7 @@ def excel_file_to_mysql(source_file_name: str, table_name: str) -> None:
     row = 1
     # https://www.geeksforgeeks.org/different-ways-to-iterate-over-rows-in-pandas-dataframe/
     for ind in source_df.index:
-        print_debug(f"Insert row {row} to DB...")
+        logging.info(f"Insert row {row} to DB...")
         head = query_insert_row_head
         for column in df_column_list:
             head += f"\n    '{source_df[column][ind]}',"
@@ -98,7 +106,7 @@ def excel_file_to_mysql(source_file_name: str, table_name: str) -> None:
         # TODO: проверить результат выполнения запроса на наличие ошибок
         row += 1
 
-    print_debug("Done.")
+    logging.info("Done.")
 
 
 excel_file_to_mysql("Дислокация вагонов по сети.xlsx", "istk_dislocation")
